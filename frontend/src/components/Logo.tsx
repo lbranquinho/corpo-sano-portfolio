@@ -43,7 +43,7 @@ export function Logo({ hasLogo, compact = false, light = false, large = false, c
       {!compact && (
         <div className="leading-none">
           <p className={clsx("font-script font-bold", large ? "text-7xl" : "text-2xl", light ? "text-white" : "text-brand-900 dark:text-white")}>Corpo Sano</p>
-          <p className={clsx("uppercase", large ? "mt-1.5 text-[30px] tracking-[0.25em]" : "mt-0.5 text-[10px] tracking-[0.25em]", light ? "text-brand-100" : "text-brand-600 dark:text-brand-100")}>
+          <p className={clsx("uppercase", large ? "mt-5 text-lg tracking-[0.35em]" : "mt-0.5 text-[10px] tracking-[0.25em]", light ? "text-brand-100" : "text-brand-600 dark:text-brand-100")}>
             saúde e bem-estar
           </p>
         </div>
