@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-slate-100 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-100;
+    font-feature-settings: "cv11", "ss01";
+    /* celular: nada empurra a página para os lados */
+    overflow-x: hidden;
+  }
+  /* itens de grade e de linha flexível podem encolher (evita campos estourando a tela no celular) */
+  .grid > *,
+  .flex > input,
+  .flex > select {
+    min-width: 0;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply text-slate-900 dark:text-white;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-600/60 ring-offset-1 ring-offset-white dark:ring-offset-slate-900;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900;
+  }
+  .input {
+    /* 16px no celular: o iPhone não dá zoom automático ao tocar no campo */
+    @apply w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-base text-slate-800 placeholder:text-slate-400 sm:text-sm
+      transition focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20
+      disabled:cursor-not-allowed disabled:bg-slate-100
+      dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium transition
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700;
+  }
+  .btn-secondary {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800;
+  }
+  .btn-danger {
+    @apply btn bg-rose-500 text-white hover:bg-rose-600;
+  }
+  .table-base {
+    @apply w-full text-left text-sm;
+  }
+  .table-base th {
+    @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500
+      dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400;
+  }
+  .table-base td {
+    @apply border-b border-slate-100 px-3 py-2.5 align-middle dark:border-slate-800;
+  }
+  .table-base tbody tr {
+    @apply transition hover:bg-brand-50/50 dark:hover:bg-slate-800/40;
+  }
+  .brand-gradient {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #38bdf8 100%);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  background-clip: padding-box;
+}
+@media print {
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+}

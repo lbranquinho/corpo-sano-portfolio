@@ -1,0 +1,91 @@
+# Corpo Sano — implantação (homologação ou produção) com HTTPS.
+# Cada ambiente roda em sua própria pasta, com seu próprio .env (ver docs/IMPLANTACAO.md).
+#   docker compose build && docker compose up -d
+name: ${COMPOSE_PROJECT_NAME:-corposano}
+
+x-backend: &backend
+  image: corposano-backend:${IMAGE_TAG:-latest}
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    STORAGE_DIR: /data/files
+    BACKUP_DIR: /backups
+    PG_DUMP_PATH: pg_dump
+    PG_RESTORE_PATH: pg_restore
+  volumes:
+    - files:/data/files
+    - backups:/backups
+  depends_on:
+    db:
+      condition: service_healthy
+  networks: [internal]
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  api:
+    <<: *backend
+    build: ./backend
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    image: corposano-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./nginx/reload-loop.sh:/docker-entrypoint.d/99-reload-loop.sh:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [internal]
+
+  certbot:
+    image: certbot/certbot:v2.11.0
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: ["/bin/sh", "-c", "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"]
+
+networks:
+  internal:
+
+volumes:
+  db_data:
+  files:
+  backups:

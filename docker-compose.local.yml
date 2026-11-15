@@ -1,0 +1,17 @@
+# Execução LOCAL completa via Docker (sem HTTPS), para desenvolvimento e demonstração.
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+# Acesse http://localhost:8080
+services:
+  web:
+    ports: !override
+      - "${HTTP_PORT:-8080}:80"
+    volumes: !override
+      - ./nginx/templates-local:/etc/nginx/templates:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+
+  db:
+    ports:
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
+
+  certbot:
+    profiles: ["somente-servidor"]

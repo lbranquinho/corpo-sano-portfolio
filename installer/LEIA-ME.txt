@@ -1,0 +1,46 @@
+CORPO SANO — INSTALAÇÃO LOCAL (WINDOWS)
+=======================================
+
+O que foi instalado
+-------------------
+- Programa: C:\Program Files\Corpo Sano
+- Dados (banco, anexos, backups, configuração e logs): C:\ProgramData\CorpoSano
+- Serviços do Windows (iniciam automaticamente com o computador):
+    * CorpoSanoDB  — banco de dados PostgreSQL 16
+    * CorpoSano    — sistema (interface, API e rotinas automáticas)
+
+Como acessar
+------------
+- Neste computador: atalho "Corpo Sano" ou http://localhost:8080 (ou a porta escolhida).
+- Em outros computadores/celulares da clínica (mesma rede): http://NOME-OU-IP-DESTE-COMPUTADOR:8080
+  (exige a opção "Permitir acesso de outros computadores da rede" marcada na instalação).
+- O computador que tem o Corpo Sano instalado precisa ficar ligado durante o expediente.
+
+Primeiro acesso
+---------------
+Entre com o e-mail e a senha provisória informados no instalador. O sistema pedirá uma nova senha.
+Depois: Configurações › Clínica (envie o logotipo), profissionais, salas, horários, serviços e usuários.
+
+Backups — IMPORTANTE
+--------------------
+- O backup automático é diário (a partir das 12h), criptografado e verificado.
+- Ficam em C:\ProgramData\CorpoSano\backups. Se você informou uma "pasta para cópia extra",
+  cada backup também é copiado para ela (use um HD externo ou uma pasta do OneDrive/Google Drive).
+- O arquivo C:\ProgramData\CorpoSano\corposano.env contém as CHAVES de criptografia.
+  Guarde uma cópia dele em local seguro FORA deste computador: sem ele os backups não podem ser restaurados.
+- Restauração: consulte docs/BACKUP_E_RESTAURACAO.md no código-fonte ou o suporte técnico.
+
+Segurança
+---------
+- O acesso é pela rede interna, sem HTTPS. Para acesso pela internet, use a implantação em servidor
+  (Docker + HTTPS), descrita em docs/IMPLANTACAO.md — não exponha a porta deste computador no roteador.
+- O webhook do WhatsApp (status de entrega e respostas) exige endereço público HTTPS: na instalação local,
+  o envio de mensagens funciona, mas confirmações de leitura e respostas só chegam na implantação em servidor.
+
+Atualizar / desinstalar
+-----------------------
+- Atualização: execute o instalador da nova versão; dados e configuração são preservados.
+- Desinstalação: Configurações do Windows › Aplicativos › Corpo Sano. Por padrão os DADOS são mantidos
+  em C:\ProgramData\CorpoSano (o desinstalador pergunta se deseja apagá-los).
+
+Logs: C:\ProgramData\CorpoSano\logs

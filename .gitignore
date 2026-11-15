@@ -1,0 +1,48 @@
+# Segredos e dados
+.env
+.env.homologacao
+.env.producao
+backend/.env
+certbot/
+data/
+backend/data/
+*.dump
+*.dump.enc
+*.pfx
+*.p12
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.coverage
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Esquemas oficiais (baixados de gov.br/nfse; ver README da pasta)
+backend/app/integrations/nfse/xsd/*.xsd
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# configuração e segredos de implantação (nunca versionar)
+implantacao-privada/
+entrega/
+*.env
+!.env.example
+!.env.homologacao.example
+!.env.producao.example
+*.key
+*.pem
+
+# instalador Windows (artefatos gerados) e configurações locais do assistente
+build-installer/
+installer/Output/
+.claude/
+frontend/.vite/

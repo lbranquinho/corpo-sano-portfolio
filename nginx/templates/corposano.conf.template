@@ -1,0 +1,95 @@
+# Corpo Sano — Nginx de produção/homologação (HTTPS obrigatório)
+# Variável substituída na inicialização do container: ${DOMAIN}
+
+limit_req_zone $binary_remote_addr zone=cs_api:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=cs_login:10m rate=10r/m;
+limit_req_status 429;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
+    server_tokens off;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+    server_tokens off;
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:CS_SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    client_max_body_size 20m;
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    root /usr/share/nginx/html;
+
+    location = /api/v1/auth/login {
+        limit_req zone=cs_login burst=5 nodelay;
+        proxy_pass http://api:8000;
+        include /etc/nginx/snippets/proxy.conf;
+    }
+
+    # Webhook da Meta: sem limitação agressiva (validado por assinatura HMAC na API)
+    location /api/v1/whatsapp/webhook {
+        proxy_pass http://api:8000;
+        include /etc/nginx/snippets/proxy.conf;
+    }
+
+    location /api/ {
+        limit_req zone=cs_api burst=60 nodelay;
+        proxy_pass http://api:8000;
+        include /etc/nginx/snippets/proxy.conf;
+    }
+
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        include /etc/nginx/snippets/security-headers.conf;
+        try_files $uri =404;
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-store";
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        include /etc/nginx/snippets/security-headers.conf;
+    }
+
+    # app instalável: service worker e manifesto sempre revalidados (atualizações chegam na hora)
+    location = /sw.js {
+        add_header Cache-Control "no-cache";
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        include /etc/nginx/snippets/security-headers.conf;
+    }
+
+    location = /manifest.webmanifest {
+        default_type application/manifest+json;
+        add_header Cache-Control "no-cache";
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        include /etc/nginx/snippets/security-headers.conf;
+    }
+
+    location / {
+        try_files $uri /index.html;
+    }
+}

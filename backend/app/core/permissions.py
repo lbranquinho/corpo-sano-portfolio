@@ -1,0 +1,113 @@
+"""Catálogo de permissões e perfis padrão.
+
+Permissões são separadas por área (administrativa, clínica, financeira, fiscal),
+e podem ser personalizadas por perfil e por usuário.
+"""
+from __future__ import annotations
+
+PERMISSIONS: dict[str, tuple[str, str]] = {
+    # código: (módulo, descrição)
+    "dashboard.view": ("dashboard", "Ver painel operacional"),
+    "dashboard.financial": ("dashboard", "Ver indicadores financeiros no painel"),
+    "dashboard.fiscal": ("dashboard", "Ver indicadores fiscais no painel"),
+    "customers.read": ("clientes", "Consultar clientes autorizados"),
+    "customers.read_all": ("clientes", "Consultar todos os clientes"),
+    "customers.write": ("clientes", "Cadastrar e editar clientes"),
+    "customers.lgpd": ("clientes", "Exportar/anonimizar dados (LGPD)"),
+    "agenda.read": ("agenda", "Consultar a própria agenda"),
+    "agenda.read_all": ("agenda", "Consultar a agenda de todos os profissionais"),
+    "agenda.write": ("agenda", "Agendar, remarcar e cancelar"),
+    "agenda.override": ("agenda", "Agendar fora do horário de funcionamento"),
+    "agenda.settings": ("agenda", "Configurar horários, feriados, salas e bloqueios"),
+    "crm.read": ("crm", "Consultar CRM"),
+    "crm.write": ("crm", "Registrar contatos, tarefas e mover funil"),
+    "crm.campaigns": ("crm", "Criar e disparar campanhas"),
+    "clinical.read": ("clinico", "Ver anamnese e fichas de atendimento"),
+    "clinical.write": ("clinico", "Registrar anamnese e fichas de atendimento"),
+    "services.read": ("servicos", "Consultar serviços"),
+    "services.write": ("servicos", "Cadastrar serviços e planos de pacote"),
+    "packages.read": ("pacotes", "Consultar pacotes"),
+    "packages.write": ("pacotes", "Vender e ajustar pacotes"),
+    "finance.read": ("financeiro", "Consultar financeiro"),
+    "finance.write": ("financeiro", "Lançar receitas, despesas e contas"),
+    "finance.payments": ("financeiro", "Registrar pagamentos recebidos"),
+    "finance.reverse": ("financeiro", "Estornar e cancelar lançamentos"),
+    "finance.close": ("financeiro", "Fechamento diário e conciliação"),
+    "finance.settings": ("financeiro", "Configurar contas, categorias e formas de pagamento"),
+    "fiscal.read": ("fiscal", "Consultar notas, tributos e documentos"),
+    "fiscal.issue": ("fiscal", "Emitir NFS-e"),
+    "fiscal.cancel": ("fiscal", "Cancelar e substituir NFS-e"),
+    "fiscal.settings": ("fiscal", "Cadastro fiscal, certificados e códigos de serviço"),
+    "fiscal.taxes": ("fiscal", "Gerir tributos e apurações"),
+    "fiscal.obligations": ("fiscal", "Gerir obrigações acessórias"),
+    "fiscal.documents": ("fiscal", "Registrar documentos fiscais recebidos"),
+    "fiscal.export": ("fiscal", "Gerar exportações para o contador"),
+    "reports.operational": ("relatorios", "Relatórios operacionais"),
+    "reports.financial": ("relatorios", "Relatórios financeiros"),
+    "reports.fiscal": ("relatorios", "Relatórios fiscais"),
+    "whatsapp.read": ("whatsapp", "Ver histórico de mensagens"),
+    "whatsapp.send": ("whatsapp", "Enviar mensagens"),
+    "whatsapp.settings": ("whatsapp", "Configurar integração e templates"),
+    "users.manage": ("usuarios", "Gerir usuários, perfis e permissões"),
+    "audit.read": ("usuarios", "Consultar logs de auditoria"),
+    "settings.manage": ("configuracoes", "Configurações gerais da clínica"),
+    "backups.manage": ("configuracoes", "Backups e restauração"),
+}
+
+ALL = list(PERMISSIONS)
+
+DEFAULT_ROLES: dict[str, dict] = {
+    "admin": {
+        "name": "Administrador",
+        "description": "Acesso completo ao sistema.",
+        "permissions": ALL,
+    },
+    "recepcionista": {
+        "name": "Recepcionista",
+        "description": "Clientes, agenda, CRM e pagamentos autorizados.",
+        "permissions": [
+            "dashboard.view",
+            "customers.read",
+            "customers.read_all",
+            "customers.write",
+            "agenda.read",
+            "agenda.read_all",
+            "agenda.write",
+            "crm.read",
+            "crm.write",
+            "services.read",
+            "packages.read",
+            "packages.write",
+            "finance.payments",
+            "whatsapp.read",
+            "whatsapp.send",
+            "reports.operational",
+        ],
+    },
+    "massoterapeuta": {
+        "name": "Massoterapeuta",
+        "description": "Própria agenda, clientes atendidos, anamnese e fichas de atendimento.",
+        "permissions": [
+            "dashboard.view",
+            "customers.read",
+            "agenda.read",
+            "clinical.read",
+            "clinical.write",
+            "services.read",
+            "packages.read",
+        ],
+    },
+    "contador": {
+        "name": "Contador",
+        "description": "Acesso restrito ao módulo Corpo Sano Contábil.",
+        "permissions": [
+            "fiscal.read",
+            "fiscal.taxes",
+            "fiscal.obligations",
+            "fiscal.documents",
+            "fiscal.export",
+            "reports.financial",
+            "reports.fiscal",
+        ],
+    },
+}
