@@ -6,7 +6,11 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
+  useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type RefObject,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
@@ -40,38 +44,56 @@ export function Button({ variant = "primary", loading, icon, size = "md", classN
   );
 }
 
+/** Liga dica/erro ao campo dentro do Field (aria-describedby / aria-invalid) para leitores de tela. */
+const FieldCtx = createContext<{ describedBy?: string; invalid?: boolean }>({});
+
+function useFieldAria(p: { "aria-describedby"?: string; "aria-invalid"?: InputHTMLAttributes<HTMLInputElement>["aria-invalid"] }) {
+  const f = useContext(FieldCtx);
+  return {
+    "aria-describedby": [p["aria-describedby"], f.describedBy].filter(Boolean).join(" ") || undefined,
+    "aria-invalid": p["aria-invalid"] ?? (f.invalid || undefined),
+  };
+}
+
 export function Field({ label, hint, error, children, className, required }: {
   label?: string; hint?: string; error?: string; children: ReactNode; className?: string; required?: boolean;
 }) {
+  const id = useId();
+  const msgId = error || hint ? `${id}-msg` : undefined;
   return (
+    <FieldCtx.Provider value={{ describedBy: msgId, invalid: !!error }}>
     <label className={clsx("block", className)}>
       {label && (
         <span className="label">
           {label}
-          {required && <span className="text-rose-500"> *</span>}
+          {required && <span className="text-rose-600 dark:text-rose-400" aria-hidden> *</span>}
         </span>
       )}
       {children}
-      {hint && !error && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
-      {error && <span className="mt-1 block text-xs text-rose-600">{error}</span>}
+      {hint && !error && <span id={msgId} className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{hint}</span>}
+      {error && <span id={msgId} role="alert" className="mt-1 block text-xs text-rose-600 dark:text-rose-400">{error}</span>}
     </label>
+    </FieldCtx.Provider>
   );
 }
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...p }, ref) {
-  return <input ref={ref} className={clsx("input", className)} {...p} />;
+  const aria = useFieldAria(p);
+  return <input ref={ref} className={clsx("input", className)} {...p} {...aria} />;
 });
 
 export function Select({ className, children, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {
+  const aria = useFieldAria(p);
   return (
-    <select className={clsx("input pr-8", className)} {...p}>
+    <select className={clsx("input pr-8", className)} {...p} {...aria}>
       {children}
     </select>
   );
 }
 
 export function Textarea({ className, ...p }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={clsx("input min-h-[80px]", className)} {...p} />;
+  const aria = useFieldAria(p);
+  return <textarea className={clsx("input min-h-[80px]", className)} {...p} {...aria} />;
 }
 
 export function Checkbox({ label, checked, onChange, hint }: { label: ReactNode; checked: boolean; onChange: (v: boolean) => void; hint?: string }) {
@@ -81,7 +103,7 @@ export function Checkbox({ label, checked, onChange, hint }: { label: ReactNode;
         onChange={(e) => onChange(e.target.checked)} />
       <span>
         {label}
-        {hint && <span className="block text-xs text-slate-500">{hint}</span>}
+        {hint && <span className="block text-xs text-slate-500 dark:text-slate-400">{hint}</span>}
       </span>
     </label>
   );
@@ -122,8 +144,8 @@ const BADGE: Record<string, string> = {
   yellow: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
   red: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200",
   gray: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
-  violet: "bg-lavender text-violet dark:bg-violet/20 dark:text-violet-200",
-  pink: "bg-rose-100 text-rose-500 dark:bg-rose-500/20 dark:text-rose-200",
+  violet: "bg-lavender text-violet-700 dark:bg-violet/20 dark:text-violet-200",
+  pink: "bg-blossom-100 text-blossom-700 dark:bg-blossom-500/20 dark:text-blossom-200",
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -150,10 +172,15 @@ export function Spinner({ className }: { className?: string }) {
 
 export function Loading({ text = "Carregando..." }: { text?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+    <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500 dark:text-slate-400" role="status">
       <Spinner /> {text}
     </div>
   );
+}
+
+/** Bloco cinza animado que reserva o espaço do conteúdo enquanto carrega (evita a página "pular"). */
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={clsx("animate-pulse rounded-xl bg-slate-200/70 motion-reduce:animate-none dark:bg-slate-800", className)} aria-hidden />;
 }
 
 export function Empty({ title = "Nada por aqui ainda", text, action }: { title?: string; text?: string; action?: ReactNode }) {
@@ -165,7 +192,7 @@ export function Empty({ title = "Nada por aqui ainda", text, action }: { title?:
         <path d="M56 28 C44 26 36 32 32 42 C44 42 52 36 56 28 Z" fill="#FCE7F3" />
       </svg>
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{title}</p>
-      {text && <p className="max-w-md text-xs text-slate-500">{text}</p>}
+      {text && <p className="max-w-md text-xs text-slate-500 dark:text-slate-400">{text}</p>}
       {action}
     </div>
   );
@@ -195,31 +222,54 @@ export function StatCard({ label, value, hint, icon, tone = "blue", onClick }: {
 }) {
   const tones = {
     blue: "bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-100",
-    violet: "bg-lavender text-violet dark:bg-violet/20",
-    pink: "bg-rose-100 text-rose-500 dark:bg-rose-500/20",
+    violet: "bg-lavender text-violet-700 dark:bg-violet/20 dark:text-violet-200",
+    pink: "bg-blossom-100 text-blossom-700 dark:bg-blossom-500/20 dark:text-blossom-200",
     green: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200",
     amber: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200",
     slate: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
   }[tone];
-  return (
-    <div className={clsx("card flex items-start gap-3 p-4", onClick && "cursor-pointer transition hover:-translate-y-0.5")} onClick={onClick}>
-      {icon && <div className={clsx("rounded-xl p-2.5", tones)}>{icon}</div>}
-      <div className="min-w-0">
+  const body = (
+    <>
+      {/* no celular o ícone sai para o valor caber nos cartões em duas colunas */}
+      {icon && <div className={clsx("hidden rounded-xl p-2.5 sm:block", tones)} aria-hidden>{icon}</div>}
+      <div className="min-w-0 flex-1">
         <p className="text-xs font-medium leading-tight text-slate-500 dark:text-slate-400">{label}</p>
         <p className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900 dark:text-white">{value}</p>
-        {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
+        {hint && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
       </div>
-    </div>
+    </>
   );
+  // cartão clicável = botão de verdade (Tab + Enter) com seta indicando que leva a outra tela
+  if (onClick)
+    return (
+      <button type="button" onClick={onClick}
+        className="card group relative flex w-full items-start gap-3 p-4 pr-8 text-left transition hover:-translate-y-0.5 hover:border-brand-500/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        {body}
+        <ChevronRight className="absolute right-3 top-4 h-4 w-4 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-brand-600 motion-reduce:transition-none" aria-hidden />
+      </button>
+    );
+  return <div className="card flex items-start gap-3 p-4">{body}</div>;
 }
 
 export function Tabs({ tabs, value, onChange }: { tabs: { key: string; label: string; badge?: ReactNode }[]; value: string; onChange: (k: string) => void }) {
+  const list = useRef<HTMLDivElement>(null);
+  // setas, Home e End movem entre as abas (padrão WAI-ARIA)
+  const onKey = (e: ReactKeyboardEvent) => {
+    const i = tabs.findIndex((t) => t.key === value);
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    const k = tabs[(next + tabs.length) % tabs.length].key;
+    onChange(k);
+    requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`[data-tab="${CSS.escape(k)}"]`)?.focus());
+  };
   return (
-    <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+    <div ref={list} role="tablist" onKeyDown={onKey} className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
       {tabs.map((t) => (
-        <button key={t.key} onClick={() => onChange(t.key)}
+        <button key={t.key} type="button" role="tab" data-tab={t.key} aria-selected={value === t.key} tabIndex={value === t.key ? 0 : -1}
+          onClick={() => onChange(t.key)}
           className={clsx("-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition",
-            value === t.key ? "border-brand-600 text-brand-700 dark:text-brand-100" : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200")}>
+            value === t.key ? "border-brand-600 text-brand-700 dark:text-brand-100" : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200")}>
           {t.label}
           {t.badge}
         </button>
@@ -230,14 +280,14 @@ export function Tabs({ tabs, value, onChange }: { tabs: { key: string; label: st
 
 export function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (total <= pageSize) return <p className="px-3 py-2 text-xs text-slate-500">{total} registro(s)</p>;
+  if (total <= pageSize) return <p className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{total} registro(s)</p>;
   return (
-    <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-500">
+    <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
       <span>{total} registro(s)</span>
       <div className="flex items-center gap-1">
-        <button className="btn-ghost !p-1" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Anterior"><ChevronLeft className="h-4 w-4" /></button>
+        <button className="btn-ghost h-11 w-11 !p-0 sm:h-8 sm:w-8" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Anterior"><ChevronLeft className="h-4 w-4" /></button>
         <span>Página {page} de {pages}</span>
-        <button className="btn-ghost !p-1" disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label="Próxima"><ChevronRight className="h-4 w-4" /></button>
+        <button className="btn-ghost h-11 w-11 !p-0 sm:h-8 sm:w-8" disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label="Próxima"><ChevronRight className="h-4 w-4" /></button>
       </div>
     </div>
   );
@@ -268,27 +318,77 @@ export function DataTable<T extends Record<string, any>>({ columns, rows, onRowC
 }
 
 /* ------------------------------------------------------------------ Sobreposições */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const dialogStack: RefObject<HTMLDivElement>[] = [];
+
+/**
+ * Comportamento de diálogo acessível: foco vai para dentro ao abrir, Tab fica preso no diálogo,
+ * Esc fecha e, ao fechar, o foco volta para o elemento que o abriu. Só o diálogo do topo reage.
+ */
+function useDialog(open: boolean, onClose: () => void, box: RefObject<HTMLDivElement>) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    dialogStack.push(box);
+    // trava a rolagem da página atrás da janela (no iPhone, o teclado rolava a página de fundo e a janela
+    // ficava deslocada/sem redesenhar depois que o teclado fechava)
+    document.documentElement.style.overflow = "hidden";
+    const el = box.current;
+    if (el && !el.contains(document.activeElement)) {
+      const auto = el.querySelector<HTMLElement>("[autofocus]");
+      const first = el.querySelector<HTMLElement>(`[data-dialog-body] :is(${FOCUSABLE})`);
+      (auto || first || el).focus();
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (dialogStack[dialogStack.length - 1] !== box || !box.current) return;
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closeRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = Array.from(box.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((x) => x.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !box.current.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      const i = dialogStack.indexOf(box);
+      if (i >= 0) dialogStack.splice(i, 1);
+      if (!dialogStack.length) document.documentElement.style.overflow = "";
+      if (opener?.isConnected) opener.focus();
+    };
+  }, [open, box]);
+}
 export function Modal({ open, onClose, title, children, footer, size = "md" }: {
   open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode; size?: "sm" | "md" | "lg" | "xl";
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const box = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useDialog(open, onClose, box);
   if (!open) return null;
   const width = { sm: "max-w-md", md: "max-w-2xl", lg: "max-w-4xl", xl: "max-w-6xl" }[size];
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" onMouseDown={onClose}>
-      <div role="dialog" aria-modal="true"
-        className={clsx("card flex max-h-[92vh] max-h-[92dvh] w-full min-w-0 max-w-full flex-col rounded-b-none sm:rounded-2xl", width)}
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:bg-slate-900/40 sm:backdrop-blur-[2px] sm:p-4" onMouseDown={onClose}>
+      <div ref={box} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
+        className={clsx("card outline-none flex max-h-[92vh] max-h-[92dvh] w-full min-w-0 max-w-full flex-col rounded-b-none sm:rounded-2xl", width)}
         onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800 sm:px-5">
-          <h2 className="min-w-0 truncate text-base font-semibold">{title}</h2>
-          <button className="btn-ghost shrink-0 !p-1.5" onClick={onClose} aria-label="Fechar"><X className="h-4 w-4" /></button>
+          <h2 id={titleId} className="min-w-0 truncate text-base font-semibold">{title}</h2>
+          <button className="btn-ghost h-11 w-11 shrink-0 !p-0 sm:h-8 sm:w-8" onClick={onClose} aria-label="Fechar"><X className="h-4 w-4" /></button>
         </div>
-        <div className="min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-5">{children}</div>
+        <div data-dialog-body className="min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-5">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-slate-800 sm:px-5">{footer}</div>}
       </div>
     </div>,
@@ -297,21 +397,19 @@ export function Modal({ open, onClose, title, children, footer, size = "md" }: {
 }
 
 export function Drawer({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const box = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useDialog(open, onClose, box);
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/30" onMouseDown={onClose}>
-      <div className="flex h-full w-full min-w-0 max-w-lg flex-col bg-white shadow-2xl dark:bg-slate-900" onMouseDown={(e) => e.stopPropagation()}>
+      <div ref={box} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
+        className="flex h-full w-full min-w-0 max-w-lg flex-col bg-white shadow-2xl outline-none dark:bg-slate-900" onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800 sm:px-5">
-          <h2 className="min-w-0 truncate text-base font-semibold">{title}</h2>
-          <button className="btn-ghost shrink-0 !p-1.5" onClick={onClose} aria-label="Fechar"><X className="h-4 w-4" /></button>
+          <h2 id={titleId} className="min-w-0 truncate text-base font-semibold">{title}</h2>
+          <button className="btn-ghost h-11 w-11 shrink-0 !p-0 sm:h-8 sm:w-8" onClick={onClose} aria-label="Fechar"><X className="h-4 w-4" /></button>
         </div>
-        <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-5">{children}</div>
+        <div data-dialog-body className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-5">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-slate-800 sm:px-5">{footer}</div>}
       </div>
     </div>,
@@ -333,7 +431,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[min(92vw,380px)] flex-col gap-2" aria-live="polite">
+      <div className="pointer-events-none fixed bottom-20 right-4 z-[60] lg:bottom-4 flex w-[min(92vw,380px)] flex-col gap-2" role="status" aria-live="polite">
         {items.map((t) => (
           <div key={t.id} className={clsx("pointer-events-auto flex items-start gap-2 rounded-xl border px-3.5 py-3 text-sm shadow-lg",
             t.kind === "success" && "border-emerald-200 bg-white text-emerald-800 dark:border-emerald-900 dark:bg-slate-900 dark:text-emerald-200",

@@ -15,7 +15,10 @@
 
 Barra superior: **pesquisa global** (Ctrl+K) por nome, telefone, CPF, nota; **Atalhos** (novo cliente,
 novo agendamento, registrar atendimento, registrar pagamento, emitir nota, cadastrar despesa...);
-tema claro/escuro; minha conta; sair. A sessão é encerrada após o tempo de inatividade configurado.
+**sino de alertas** (contas em atraso, certificado vencendo, obrigações fiscais, pacotes); tema claro/escuro;
+e o **menu da conta** (clique no seu nome ou nas iniciais) com minha conta, tema e sair. No celular, uma
+barra inferior leva direto a Dashboard, Agenda, Clientes, Financeiro e ao menu completo.
+A sessão é encerrada após o tempo de inatividade configurado.
 
 ## Clientes
 
@@ -26,7 +29,8 @@ tema claro/escuro; minha conta; sair. A sessão é encerrada após o tempo de in
 
 ## Agenda
 
-- Visões **dia** (colunas por profissional), **semana** e **mês**; cores por status.
+- Visões **lista** (agendamentos do dia em ordem de horário, padrão no celular), **dia** (colunas por
+  profissional), **semana** e **mês**. Cada status tem cor e ícone; uma linha vermelha marca a hora atual.
 - Clique em um horário livre para agendar. O formulário sugere **horários livres**, verifica conflitos em
   tempo real e permite usar sessão de **pacote**, avaliação inicial e **recorrência** (semanal, quinzenal,
   mensal, pulando datas ocupadas).

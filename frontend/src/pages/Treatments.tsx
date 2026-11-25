@@ -141,7 +141,7 @@ function HealthRecords({ customer }: { customer: any }) {
             ))}
             <div><dt className="label">Regiões de interesse</dt><dd>{(r.body_regions || []).join(", ") || "—"}</dd></div>
           </dl>
-          <p className="mt-3 break-all text-[11px] text-slate-400">Comprovante de integridade do aceite (SHA-256): {r.consent_hash}</p>
+          <p className="mt-3 break-all text-xs text-slate-500 dark:text-slate-400">Comprovante de integridade do aceite (SHA-256): {r.consent_hash}</p>
         </Card>
       ))}
       {open && <HealthForm customer={customer} latest={latest} onClose={() => { setOpen(false); q.refetch(); }} />}

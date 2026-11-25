@@ -24,6 +24,20 @@ def normalize_text(value: str | None) -> str:
     return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
 
 
+LIKE_ESCAPE = "\\"
+
+
+def escape_like(value: str) -> str:
+    """Faz % e _ digitados pelo usuário valerem como texto comum num LIKE/ILIKE.
+    Use junto com escape=LIKE_ESCAPE na consulta."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def like_contains(value: str) -> str:
+    """Padrão 'contém' seguro para LIKE/ILIKE (usar com escape=LIKE_ESCAPE)."""
+    return f"%{escape_like(value)}%"
+
+
 def is_valid_cpf(value: str | None) -> bool:
     cpf = only_digits(value)
     if len(cpf) != 11 or cpf == cpf[0] * 11:

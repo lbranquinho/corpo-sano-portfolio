@@ -5,6 +5,15 @@ limit_req_zone $binary_remote_addr zone=cs_api:10m rate=20r/s;
 limit_req_zone $binary_remote_addr zone=cs_login:10m rate=10r/m;
 limit_req_status 429;
 
+# Acesso pelo IP ou por nome desconhecido: fecha a conexão sem resposta (o sistema só atende pelo domínio).
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    server_tokens off;
+    return 444;
+}
+
 server {
     listen 80;
     listen [::]:80;

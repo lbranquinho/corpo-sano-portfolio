@@ -72,7 +72,7 @@ function Messages({ initialStatus }: { initialStatus: string }) {
         { key: "customer_name", label: "Cliente", render: (r) => r.customer_name || phone(r.phone) },
         { key: "direction", label: "", render: (r) => <Badge color={r.direction === "entrada" ? "pink" : "blue"}>{r.direction === "entrada" ? "recebida" : r.purpose || "enviada"}</Badge> },
         { key: "content", label: "Conteúdo", render: (r) => <span className="line-clamp-2 max-w-md text-slate-600 dark:text-slate-300">{r.content || "—"}</span> },
-        { key: "status", label: "Status", render: (r) => <div><StatusBadge status={r.status} />{r.last_error && <p className="mt-1 max-w-xs text-[11px] text-rose-600">{r.last_error}</p>}</div> },
+        { key: "status", label: "Status", render: (r) => <div><StatusBadge status={r.status} />{r.last_error && <p className="mt-1 max-w-xs text-xs text-rose-600 dark:text-rose-400">{r.last_error}</p>}</div> },
         { key: "a", label: "", render: (r) => can("whatsapp.send") && (r.status === "falhou" ? <Button size="sm" variant="ghost" onClick={() => retry.mutate(r.id)}>Reenviar</Button>
           : r.status === "pendente" ? <Button size="sm" variant="ghost" onClick={() => cancel.mutate(r.id)}>Cancelar</Button> : null) },
       ]} />

@@ -66,7 +66,7 @@ export default function MyAccount({ forced = false }: { forced?: boolean }) {
             { key: "created_at", label: "Início", render: (r) => dateTime(r.created_at) },
             { key: "last_used_at", label: "Última atividade", render: (r) => dateTime(r.last_used_at) },
             { key: "ip", label: "IP" },
-            { key: "act", label: "", render: (r) => r.current ? <span className="text-xs text-emerald-600">Esta sessão</span> :
+            { key: "act", label: "", render: (r) => r.current ? <span className="text-xs text-emerald-700 dark:text-emerald-400">Esta sessão</span> :
               <Button size="sm" variant="secondary" onClick={() => revoke.mutate(r.id)}>Encerrar</Button> },
           ]} />
         </Card>

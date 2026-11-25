@@ -14,7 +14,7 @@ from app.core.database import get_db
 from app.core.deps import require, require_any
 from app.core.errors import AppError, NotFound
 from app.core.storage import save_file
-from app.core.utils import local_today, money, only_digits, split_installments, utcnow
+from app.core.utils import LIKE_ESCAPE, like_contains, local_today, money, only_digits, split_installments, utcnow
 from app.models.auth import User
 from app.models.customer import Customer
 from app.models.finance import (
@@ -206,7 +206,8 @@ def list_receivables(
     if due_to:
         stmt = stmt.where(AccountsReceivable.due_date <= due_to)
     if q:
-        stmt = stmt.where(AccountsReceivable.description.ilike(f"%{q}%") | Customer.full_name.ilike(f"%{q}%"))
+        pat = like_contains(q)
+        stmt = stmt.where(AccountsReceivable.description.ilike(pat, escape=LIKE_ESCAPE) | Customer.full_name.ilike(pat, escape=LIKE_ESCAPE))
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = db.scalars(stmt.order_by(AccountsReceivable.due_date.desc()).offset((page - 1) * page_size).limit(page_size)).all()
     return Page(items=[_rec_out(db, r) for r in rows], total=total, page=page, page_size=page_size)
@@ -312,7 +313,8 @@ def list_payables(status: str | None = None, overdue: bool = False, due_from: da
     if due_to:
         stmt = stmt.where(AccountsPayable.due_date <= due_to)
     if q:
-        stmt = stmt.where(AccountsPayable.description.ilike(f"%{q}%") | AccountsPayable.supplier_name.ilike(f"%{q}%"))
+        pat = like_contains(q)
+        stmt = stmt.where(AccountsPayable.description.ilike(pat, escape=LIKE_ESCAPE) | AccountsPayable.supplier_name.ilike(pat, escape=LIKE_ESCAPE))
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = db.scalars(stmt.order_by(AccountsPayable.due_date).offset((page - 1) * page_size).limit(page_size)).all()
     return Page(items=[_pay_out(p) for p in rows], total=total, page=page, page_size=page_size)

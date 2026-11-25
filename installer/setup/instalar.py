@@ -270,6 +270,9 @@ def main() -> int:
     env.update({
         "DATABASE_URL": f"postgresql+psycopg://corposano:{env['DB_PASSWORD']}@localhost:{env['PG_PORT']}/corposano",
         "COOKIE_SECURE": "false",
+        # sem proxy reverso na instalação local: nunca confiar em X-Forwarded-For/X-Real-IP
+        # (senão um computador da rede poderia informar IP falso e driblar o limite de tentativas)
+        "TRUSTED_PROXIES": "",
         "LOCAL_HOST": "0.0.0.0",
         "LOCAL_PORT": str(port),
         "PUBLIC_BASE_URL": f"http://localhost:{port}",

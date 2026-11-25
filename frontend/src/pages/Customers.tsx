@@ -40,7 +40,7 @@ export default function Customers() {
       <Card padded={false}>
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-3 dark:border-slate-800">
           <div className="relative min-w-[240px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" aria-hidden />
             <Input className="pl-9" placeholder="Buscar..." value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
           </div>
           <Select className="!w-auto" value={segment} onChange={(e) => { setSegment(e.target.value); setPage(1); }}>

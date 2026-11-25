@@ -1,4 +1,4 @@
-import { Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "../components/Logo";
 import { Alert, Button, Field, Input } from "../components/ui";
@@ -8,6 +8,7 @@ export default function Login() {
   const { login, notice } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hasLogo, setHasLogo] = useState(false);
@@ -29,7 +30,7 @@ export default function Login() {
           <p className="mt-10 text-brand-100">Agenda, clientes, atendimentos, financeiro e fiscal integrados em um só lugar — com segurança e privacidade.</p>
         </div>
       </div>
-      <div className="flex flex-1 flex-col bg-white px-6 dark:bg-slate-950">
+      <div className="flex flex-1 flex-col bg-white px-6 dark:bg-slate-900">
         <div className="flex flex-1 items-center justify-center py-10">
         <form className="w-full max-w-sm space-y-5" onSubmit={async (e) => {
           e.preventDefault();
@@ -53,31 +54,35 @@ export default function Login() {
           )}
           <div>
             <h1 className="text-2xl font-semibold">Entrar</h1>
-            <p className="mt-1 text-sm text-slate-500">Acesse com seu e-mail e senha individuais.</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Acesse com seu e-mail e senha individuais.</p>
           </div>
           {notice && <Alert kind="warning">{notice}</Alert>}
           {error && <Alert kind="danger">{error}</Alert>}
           <Field label="E-mail">
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" aria-hidden />
               <Input type="email" autoComplete="username" required className="pl-9" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
           </Field>
           <Field label="Senha">
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input type="password" autoComplete="current-password" required className="pl-9" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" aria-hidden />
+              <Input type={showPw ? "text" : "password"} autoComplete="current-password" required className="pl-9 pr-12" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <button type="button" className="absolute right-0.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                onClick={() => setShowPw((v) => !v)} aria-label={showPw ? "Ocultar senha" : "Mostrar senha"} aria-pressed={showPw}>
+                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </Field>
           <Button type="submit" className="w-full" loading={busy}>Entrar</Button>
-          <p className="text-center text-xs text-slate-400">
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
             Esqueceu a senha? Solicite ao administrador uma senha provisória.
             <br />Conexão protegida. Seus acessos são registrados para auditoria.
           </p>
         </form>
         </div>
-        <footer className="pb-4 pt-2 text-center text-[11px] leading-snug text-slate-400 dark:text-slate-500">
-          Sistema integrado MassoCare © Copyright 2026 - Cuidado, organização e tranquilidade para a sua clínica.
+        <footer className="pb-4 pt-2 text-center text-xs leading-snug text-slate-500 dark:text-slate-400">
+          Sistema integrado Corpo Sano © Copyright 2026 - Cuidado, organização e tranquilidade para a sua clínica.
         </footer>
       </div>
     </div>

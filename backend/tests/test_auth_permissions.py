@@ -115,6 +115,44 @@ def test_audit_log_records_login(client, admin, db):
     assert "login" in actions
 
 
+def test_login_sql_injection_is_rejected(client, admin, db):
+    from app.models.auth import User
+
+    before = len(db.scalars(select(User.id)).all())
+    for payload in ["' OR '1'='1' --", "x@x.com'; DROP TABLE users; --", "admin@clinica.com.br' --"]:
+        r = client.post("/api/v1/auth/login", json={"email": payload, "password": "' OR 1=1 --"})
+        assert r.status_code == 401
+        assert r.json()["detail"] == "E-mail ou senha inválidos."
+    assert len(db.scalars(select(User.id)).all()) == before  # tabela intacta
+
+
+def test_like_wildcards_are_literal(client, admin):
+    from app.core.utils import escape_like, like_contains
+
+    assert escape_like("50%_a\\b") == "50\\%\\_a\\\\b"
+    assert like_contains("%") == "%\\%%"
+    # sem escape, "%" casaria com todas as ações da auditoria; agora procura o caractere literal
+    r = client.get("/api/v1/audit-logs", headers=admin, params={"action": "%"})
+    assert r.status_code == 200
+    assert r.json()["total"] == 0
+    r = client.get("/api/v1/audit-logs", headers=admin, params={"action": "login"})
+    assert r.json()["total"] >= 1
+
+
+def test_forwarded_ip_only_from_trusted_proxy(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.core import deps
+
+    req = SimpleNamespace(client=SimpleNamespace(host="192.168.1.50"), headers={"x-forwarded-for": "1.2.3.4"})
+    monkeypatch.setattr(deps, "get_settings", lambda: SimpleNamespace(trusted_proxies="172.16.0.0/12"))
+    assert deps.client_ip(req) == "192.168.1.50"  # cabeçalho ignorado: origem não é proxy
+    monkeypatch.setattr(deps, "get_settings", lambda: SimpleNamespace(trusted_proxies=""))
+    assert deps.client_ip(req) == "192.168.1.50"  # instalação local: nunca confia
+    monkeypatch.setattr(deps, "get_settings", lambda: SimpleNamespace(trusted_proxies="192.168.0.0/16"))
+    assert deps.client_ip(req) == "1.2.3.4"  # proxy confiável: usa o IP encaminhado
+
+
 def test_security_headers(client):
     r = client.get("/api/health")
     assert r.headers["x-content-type-options"] == "nosniff"

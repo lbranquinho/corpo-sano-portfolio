@@ -14,7 +14,7 @@ from app.models.system import SystemSetting
 
 DEFAULTS: dict[str, Any] = {
     # Agenda
-    "agenda.buffer_minutes": 10,
+    "agenda.buffer_minutes": 0,  # sem intervalo: um atendimento pode começar quando o anterior termina
     "agenda.slot_minutes": 30,
     "agenda.allow_overbooking_rooms": False,
     # CRM

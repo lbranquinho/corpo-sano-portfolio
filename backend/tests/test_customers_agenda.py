@@ -71,10 +71,31 @@ def test_buffer_between_sessions(client, setup_basics):
     assert book(client, b, start + timedelta(minutes=75)).status_code == 201
 
 
+def test_back_to_back_without_interval(client, setup_basics):
+    """Padrão: sem intervalo entre sessões (ex.: 15h e 16h com serviço de 60 min)."""
+    b = setup_basics
+    assert client.get("/api/v1/settings/params/agenda", headers=b["h"]).json()["agenda.buffer_minutes"] == 0
+    assert book(client, b, next_weekday_at(15)).status_code == 201
+    r = book(client, b, next_weekday_at(16))
+    assert r.status_code == 201, r.text
+
+
+def test_default_hours_6_to_22_every_day(client, setup_basics):
+    b = setup_basics
+    hours = client.get("/api/v1/settings/business-hours", headers=b["h"]).json()
+    assert [(h["is_open"], h["open_time"], h["close_time"]) for h in hours] == [(True, "06:00:00", "22:00:00")] * 7
+    assert book(client, b, next_weekday_at(6)).status_code == 201
+    assert book(client, b, next_weekday_at(21)).status_code == 201  # termina às 22h
+    assert book(client, b, next_weekday_at(10, weekday=6)).status_code == 201  # domingo aberto
+
+
 def test_outside_hours_and_holiday_rejected(client, setup_basics):
     b = setup_basics
-    r = book(client, b, next_weekday_at(21))
+    r = book(client, b, next_weekday_at(22))
     assert r.status_code == 400 and "horário de funcionamento" in r.json()["detail"]
+    hours = client.get("/api/v1/settings/business-hours", headers=b["h"]).json()
+    hours[6] = {"weekday": 6, "is_open": False}
+    assert client.put("/api/v1/settings/business-hours", headers=b["h"], json=hours).status_code == 200
     r = book(client, b, next_weekday_at(10, weekday=6))  # domingo fechado
     assert r.status_code == 400
     holiday = next_weekday_at(10, weekday=2)
@@ -82,7 +103,7 @@ def test_outside_hours_and_holiday_rejected(client, setup_basics):
     r = book(client, b, holiday)
     assert r.status_code == 400 and "feriado" in r.json()["detail"]
     # administrador pode sobrepor horário de funcionamento explicitamente
-    assert book(client, b, next_weekday_at(21), override_hours=True).status_code == 201
+    assert book(client, b, next_weekday_at(22), override_hours=True).status_code == 201
 
 
 def test_schedule_block(client, setup_basics):

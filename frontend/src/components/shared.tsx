@@ -1,4 +1,5 @@
-import { Search, UserPlus } from "lucide-react";
+import clsx from "clsx";
+import { Search, UserCheck, UserPlus } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { del, get, post, put } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -12,45 +13,85 @@ export function CustomerPicker({ value, onChange, allowCreate = true }: {
 }) {
   const [q, setQ] = useState("");
   const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const { can } = useAuth();
   const ref = useRef<HTMLDivElement>(null);
+  const term = q.trim();
   useEffect(() => {
-    if (q.trim().length < 2) return setItems([]);
-    const t = setTimeout(() => get("/customers", { q, page_size: 8 }).then((r) => setItems(r.items)).catch(() => setItems([])), 220);
-    return () => clearTimeout(t);
-  }, [q]);
+    if (term.length < 2) { setItems([]); setLoading(false); return; }
+    let alive = true; // ignora respostas de buscas antigas (digitação rápida)
+    setLoading(true);
+    const t = setTimeout(() => get("/customers", { q: term, page_size: 8 })
+      .then((r) => alive && setItems(r.items || []))
+      .catch(() => alive && setItems([]))
+      .finally(() => alive && setLoading(false)), 220);
+    return () => { alive = false; clearTimeout(t); };
+  }, [term]);
   useEffect(() => {
-    const h = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    // pointerdown cobre mouse e toque (no celular o mousedown chega atrasado ou nem chega)
+    const h = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("pointerdown", h);
+    return () => document.removeEventListener("pointerdown", h);
   }, []);
-  if (value) {
-    return (
-      <div className="flex items-center justify-between rounded-xl border border-brand-100 bg-brand-50 px-3 py-2 text-sm dark:border-brand-900 dark:bg-brand-900/20">
-        <span className="font-medium">{value.full_name}</span>
-        <button type="button" className="text-xs text-brand-600" onClick={() => onChange(null)}>trocar</button>
-      </div>
-    );
-  }
+  const input = () => ref.current?.querySelector("input");
+  const pick = (c: { id: string; full_name: string }) => {
+    setOpen(false);
+    setQ("");
+    setItems([]);
+    onChange({ id: c.id, full_name: c.full_name });
+    input()?.blur(); // fecha o teclado do celular
+  };
+  const change = () => {
+    onChange(null);
+    setQ("");
+    setOpen(true);
+    input()?.focus();
+  };
+  // evita que o campo perca o foco ao tocar na lista: senão o teclado do celular fecha,
+  // a tela muda de tamanho e o toque cai fora do nome escolhido
+  const keepFocus = (e: { preventDefault: () => void }) => e.preventDefault();
+  // O cliente escolhido aparece DENTRO do mesmo campo da busca (somente leitura), em vez de trocar o campo
+  // por outro elemento: no iPhone, trocar o elemento focado enquanto o teclado fecha deixava a tela sem
+  // redesenhar e o nome escolhido não aparecia.
   return (
-    <div ref={ref} className="relative">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-      <Input className="pl-9" placeholder="Nome, telefone ou CPF" value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} />
-      {open && (q.length >= 2 || allowCreate) && (
-        <div className="card absolute left-0 right-0 top-11 z-50 max-h-72 overflow-y-auto p-1">
+    <div ref={ref}>
+      <div className="relative">
+        {value
+          ? <UserCheck className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-600" aria-hidden />
+          : <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-slate-400" aria-hidden />}
+        <Input className={clsx("pl-9", value && "!border-brand-600 pr-20 font-medium")} placeholder="Nome, telefone ou CPF"
+          value={value ? value.full_name : q} readOnly={!!value} aria-label="Cliente"
+          autoComplete="off" autoCorrect="off" spellCheck={false}
+          enterKeyHint="search" role="combobox" aria-expanded={open && !value} aria-autocomplete="list"
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => !value && setOpen(true)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (!value && items.length === 1) pick(items[0]); } }} />
+        {value && (
+          <button type="button" onClick={change}
+            className="absolute right-1 top-1/2 min-h-9 -translate-y-1/2 rounded-lg px-3 text-xs font-medium text-brand-600 hover:bg-brand-50 dark:hover:bg-slate-800">
+            trocar
+          </button>
+        )}
+      </div>
+      {/* a lista fica no fluxo da página (empurra o restante do formulário para baixo): dentro de janelas com
+          rolagem própria uma lista "flutuante" era cortada e, no celular, ficava escondida atrás do teclado */}
+      {!value && open && (term.length >= 2 || (allowCreate && can("customers.write"))) && (
+        <div className="card mt-1 max-h-64 overflow-y-auto overscroll-contain p-1" role="listbox">
+          {term.length < 2 && <p className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">Digite ao menos 2 letras do nome, telefone ou CPF.</p>}
           {items.map((c) => (
-            <button type="button" key={c.id} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-              onClick={() => { onChange({ id: c.id, full_name: c.full_name }); setOpen(false); setQ(""); }}>
-              <span className="font-medium">{c.full_name}</span>
-              <span className="ml-2 text-xs text-slate-500">{fmtPhone(c.whatsapp || c.phone)} {c.cpf ? `· ${fmtCpf(c.cpf)}` : ""}</span>
+            <button type="button" role="option" aria-selected={false} key={c.id}
+              className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-800 dark:active:bg-slate-700"
+              onMouseDown={keepFocus} onClick={() => pick(c)}>
+              <span className="block truncate font-medium">{c.full_name}</span>
+              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{fmtPhone(c.whatsapp || c.phone)} {c.cpf ? `· ${fmtCpf(c.cpf)}` : ""}</span>
             </button>
           ))}
-          {q.length >= 2 && items.length === 0 && <p className="px-3 py-2 text-sm text-slate-500">Nenhum cliente encontrado.</p>}
+          {term.length >= 2 && loading && items.length === 0 && <p className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">Buscando...</p>}
+          {term.length >= 2 && !loading && items.length === 0 && <p className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">Nenhum cliente encontrado.</p>}
           {allowCreate && can("customers.write") && (
-            <button type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-brand-600 hover:bg-brand-50 dark:hover:bg-slate-800"
-              onClick={() => { setCreating(true); setOpen(false); }}>
+            <button type="button" className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-brand-600 hover:bg-brand-50 dark:hover:bg-slate-800"
+              onMouseDown={keepFocus} onClick={() => { setCreating(true); setOpen(false); }}>
               <UserPlus className="h-4 w-4" /> Cadastrar novo cliente {q && `"${q}"`}
             </button>
           )}

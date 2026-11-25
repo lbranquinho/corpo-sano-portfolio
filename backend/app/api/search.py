@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, has_perm
-from app.core.utils import only_digits, to_local, utcnow
+from app.core.utils import LIKE_ESCAPE, like_contains, only_digits, to_local, utcnow
 from app.models.auth import User
 from app.models.catalog import Service
 from app.models.customer import Customer
@@ -42,14 +42,14 @@ def global_search(q: str = Query(..., min_length=2, max_length=80), db: Session 
                             "url": f"/agenda?data={to_local(a.start_at).date().isoformat()}&agendamento={a.id}"})
     if has_perm(user, "fiscal.read"):
         digits = only_digits(q)
-        conds = [FiscalInvoice.taker_name.ilike(f"%{q}%")]
+        conds = [FiscalInvoice.taker_name.ilike(like_contains(q), escape=LIKE_ESCAPE)]
         if digits:
             conds += [FiscalInvoice.nfse_number == digits, FiscalInvoice.taker_document == digits]
         for i in db.scalars(select(FiscalInvoice).where(or_(*conds)).order_by(FiscalInvoice.created_at.desc()).limit(5)).all():
             results.append({"type": "nota", "id": str(i.id), "title": f"NFS-e {i.nfse_number or '(rascunho)'} — {i.taker_name or ''}",
                             "subtitle": f"{i.status} · R$ {i.gross_amount:.2f}", "url": f"/fiscal/notas/{i.id}"})
     if has_perm(user, "services.read"):
-        for s in db.scalars(select(Service).where(Service.name.ilike(f"%{q}%")).limit(5)).all():
+        for s in db.scalars(select(Service).where(Service.name.ilike(like_contains(q), escape=LIKE_ESCAPE)).limit(5)).all():
             results.append({"type": "servico", "id": str(s.id), "title": s.name, "subtitle": f"{s.duration_minutes} min",
                             "url": "/servicos"})
     return results

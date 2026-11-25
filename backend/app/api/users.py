@@ -14,7 +14,7 @@ from app.core.deps import require
 from app.core.errors import AppError, Conflict, NotFound
 from app.core.permissions import PERMISSIONS
 from app.core.security import hash_password, validate_password_strength
-from app.core.utils import utcnow
+from app.core.utils import LIKE_ESCAPE, like_contains, utcnow
 from app.models.auth import Permission, Role, User, UserPermission, UserSession
 from app.models.system import AuditLog
 from app.schemas.common import ORM, Page
@@ -306,11 +306,11 @@ def audit_logs(
 ):
     stmt = select(AuditLog)
     if action:
-        stmt = stmt.where(AuditLog.action.ilike(f"%{action}%"))
+        stmt = stmt.where(AuditLog.action.ilike(like_contains(action), escape=LIKE_ESCAPE))
     if entity:
         stmt = stmt.where(AuditLog.entity == entity)
     if user_name:
-        stmt = stmt.where(AuditLog.user_name.ilike(f"%{user_name}%"))
+        stmt = stmt.where(AuditLog.user_name.ilike(like_contains(user_name), escape=LIKE_ESCAPE))
     if date_from:
         stmt = stmt.where(func.date(AuditLog.created_at) >= date_from)
     if date_to:

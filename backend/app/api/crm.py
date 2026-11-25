@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.core.deps import require
 from app.core.errors import AppError, NotFound
 from app.core.settings_store import get_setting
-from app.core.utils import local_today, normalize_text, utcnow
+from app.core.utils import LIKE_ESCAPE, like_contains, local_today, normalize_text, utcnow
 from app.models.auth import User
 from app.models.crm import CRM_STAGES, CrmCampaign, CrmInteraction, CrmLead, CrmTask
 from app.models.customer import Customer
@@ -121,7 +121,8 @@ def list_leads(stage: str | None = None, q: str | None = None, db: Session = Dep
     if stage:
         stmt = stmt.where(CrmLead.stage == stage)
     if q:
-        stmt = stmt.where(or_(func.lower(CrmLead.name).like(f"%{q.lower()}%"), CrmLead.phone.like(f"%{q}%")))
+        stmt = stmt.where(or_(func.lower(CrmLead.name).like(like_contains(q.lower()), escape=LIKE_ESCAPE),
+                              CrmLead.phone.like(like_contains(q), escape=LIKE_ESCAPE)))
     return db.scalars(stmt.order_by(CrmLead.stage_changed_at.desc()).limit(1000)).all()
 
 

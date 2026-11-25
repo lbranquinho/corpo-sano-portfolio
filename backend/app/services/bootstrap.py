@@ -101,13 +101,8 @@ def seed_reference_data(db: Session) -> None:
         db.add(FinancialAccount(name="Caixa da clínica", kind="caixa"))
     # Horário de funcionamento inicial (editável em Configurações > Agenda)
     if db.scalar(select(BusinessHour).limit(1)) is None:
-        for wd in range(7):
-            if wd < 5:
-                db.add(BusinessHour(weekday=wd, is_open=True, open_time=time(8), close_time=time(19)))
-            elif wd == 5:
-                db.add(BusinessHour(weekday=wd, is_open=True, open_time=time(8), close_time=time(13)))
-            else:
-                db.add(BusinessHour(weekday=wd, is_open=False))
+        for wd in range(7):  # todos os dias, das 6h às 22h
+            db.add(BusinessHour(weekday=wd, is_open=True, open_time=time(6), close_time=time(22)))
     if db.scalar(select(Clinic).limit(1)) is None:
         db.add(Clinic(name="Corpo Sano", trade_name="Corpo Sano", timezone=get_settings().timezone))
     if db.scalar(select(TaxCompanySettings).limit(1)) is None:

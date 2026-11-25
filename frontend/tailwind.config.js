@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import colors from "tailwindcss/colors";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 
@@ -19,8 +20,10 @@ export default {
         },
         aqua: "#38BDF8",
         lavender: "#EDE9FE",
-        violet: "#8B5CF6",
-        rose: { 100: "#FCE7F3", 500: "#EC4899" },
+        // violeta da marca = violet-500; mantém a escala completa (violet-200, violet-700...)
+        violet: { ...colors.violet, DEFAULT: "#8B5CF6" },
+        // rosa da marca (decorativo). "rose" fica com o vermelho padrão, usado para perigo e erro.
+        blossom: { 100: "#FCE7F3", 200: "#FBCFE8", 500: "#EC4899", 700: "#BE185D" },
         slateblue: "#64748B",
       },
       fontFamily: {

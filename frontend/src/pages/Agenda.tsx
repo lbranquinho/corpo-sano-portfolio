@@ -1,11 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Ban, CalendarPlus, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { Ban, CalendarPlus, Check, CheckCheck, ChevronLeft, ChevronRight, Lock, Play, UserX, X, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CustomerPicker } from "../components/shared";
 import {
-  Alert, Badge, Button, Checkbox, Drawer, Field, Input, Modal, PageHeader, Select, StatusBadge, Tabs, Textarea, useToast,
+  Alert, Badge, Button, Checkbox, Drawer, Empty, Field, Input, Modal, PageHeader, Select, StatusBadge, Tabs, Textarea, useToast,
 } from "../components/ui";
 import { del, get, post, put } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -21,6 +21,29 @@ const STATUS_STYLE: Record<string, string> = {
   cancelado: "bg-slate-100 border-slate-400 text-slate-500 line-through dark:bg-slate-800",
   falta: "bg-rose-50 border-rose-500 text-rose-800 dark:bg-rose-900/30 dark:text-rose-100",
 };
+
+// além da cor, cada status tem um ícone (quem não distingue cores também identifica o status)
+const STATUS_ICON: Record<string, LucideIcon | undefined> = {
+  confirmado: Check, em_atendimento: Play, concluido: CheckCheck, cancelado: X, falta: UserX,
+};
+
+function StatusIcon({ status }: { status: string }) {
+  const Icon = STATUS_ICON[status];
+  return Icon ? <Icon className="inline h-3 w-3 shrink-0 align-[-2px]" aria-label={label(status)} /> : null;
+}
+
+/** Minutos desde a meia-noite, atualizado a cada minuto (linha da hora atual). */
+function useNowMinutes() {
+  const calc = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+  const [now, setNow] = useState(calc);
+  useEffect(() => {
+    const t = setInterval(() => setNow(calc()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+const isSmallScreen = () => typeof window !== "undefined" && window.matchMedia?.("(max-width: 639px)").matches;
 
 function weekStart(day: string) {
   const wd = weekdayOf(day); // 0 = domingo
@@ -43,7 +66,10 @@ function lanes<T extends { start_at: string; end_at: string }>(items: T[]) {
 export default function Agenda() {
   const { can, me } = useAuth();
   const [params, setParams] = useSearchParams();
-  const [view, setView] = useState<"dia" | "semana" | "mes">("dia");
+  // no celular a agenda abre como lista do dia (as colunas por profissional obrigam a rolar para o lado)
+  const [view, setView] = useState<"lista" | "dia" | "semana" | "mes">(() => (isSmallScreen() ? "lista" : "dia"));
+  const nowMin = useNowMinutes();
+  const today = isoDay();
   const [day, setDay] = useState(params.get("data") || isoDay());
   const [prof, setProf] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
@@ -63,7 +89,7 @@ export default function Agenda() {
     }
   }, [params, setParams, day]);
 
-  const [start, end] = view === "dia" ? [day, day] : view === "semana" ? [weekStart(day), addDays(weekStart(day), 6)] : [monthStart(day), monthEnd(day)];
+  const [start, end] = view === "dia" || view === "lista" ? [day, day] : view === "semana" ? [weekStart(day), addDays(weekStart(day), 6)] : [monthStart(day), monthEnd(day)];
   const appts = useGet<any[]>(["appointments"], "/agenda/appointments", { start, end, professional_id: prof || undefined });
   const blocks = useGet<any[]>(["blocks"], "/agenda/blocks", { start, end });
   const visible = (appts.data || []).filter((a) => showCancelled || a.status !== "cancelado");
@@ -85,7 +111,7 @@ export default function Agenda() {
   for (let m = Math.floor(openMin / 30) * 30; m < closeMin; m += 30) slots.push(m);
 
   const shift = (n: number) => {
-    if (view === "dia") setDay(addDays(day, n));
+    if (view === "dia" || view === "lista") setDay(addDays(day, n));
     else if (view === "semana") setDay(addDays(day, 7 * n));
     else {
       const [y, mo] = day.split("-").map(Number);
@@ -124,9 +150,10 @@ export default function Agenda() {
           </Select>
         )}
         <Checkbox label="Mostrar cancelados" checked={showCancelled} onChange={setShowCancelled} />
-        <div className="ml-auto flex rounded-xl border border-slate-200 p-0.5 dark:border-slate-700">
-          {(["dia", "semana", "mes"] as const).map((v) => (
-            <button key={v} onClick={() => setView(v)} className={clsx("rounded-lg px-3 py-1.5 text-sm capitalize", view === v ? "bg-brand-600 text-white" : "text-slate-600 dark:text-slate-300")}>
+        <div className="ml-auto flex rounded-xl border border-slate-200 p-0.5 dark:border-slate-700" role="group" aria-label="Visualização">
+          {(["lista", "dia", "semana", "mes"] as const).map((v) => (
+            <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v}
+              className={clsx("min-h-10 rounded-lg px-3 py-1.5 text-sm capitalize sm:min-h-0", view === v ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800")}>
               {v === "mes" ? "Mês" : v}
             </button>
           ))}
@@ -134,11 +161,18 @@ export default function Agenda() {
       </div>
 
       <div className="mb-3 flex flex-wrap gap-2 text-xs">
-        {Object.keys(STATUS_STYLE).map((s) => <span key={s} className={clsx("rounded-md border-l-4 px-2 py-0.5", STATUS_STYLE[s])}>{label(s)}</span>)}
+        {Object.keys(STATUS_STYLE).map((s) => (
+          <span key={s} className={clsx("inline-flex items-center gap-1 rounded-md border-l-4 px-2 py-0.5", STATUS_STYLE[s])}>
+            {STATUS_ICON[s] && <span aria-hidden><StatusIcon status={s} /></span>}{label(s)}
+          </span>
+        ))}
       </div>
 
       {view === "mes" ? (
-        <MonthGrid day={day} appts={visible} onPickDay={(d) => { setDay(d); setView("dia"); }} />
+        <MonthGrid day={day} appts={visible} onPickDay={(d) => { setDay(d); setView(isSmallScreen() ? "lista" : "dia"); }} />
+      ) : view === "lista" ? (
+        <DayList appts={visible.filter((a) => isoDay(new Date(a.start_at)) === day && (!prof || a.professional_id === prof))}
+          onOpen={setSelected} onNew={can("agenda.write") ? () => setCreating({ day, time: "09:00" }) : undefined} />
       ) : cols.length === 0 ? (
         <Alert kind="info">Cadastre profissionais em Configurações para visualizar a agenda.</Alert>
       ) : (
@@ -147,7 +181,7 @@ export default function Agenda() {
             <div className="sticky left-0 z-10 w-14 shrink-0 border-r border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
               <div className="h-10 border-b border-slate-100 dark:border-slate-800" />
               {slots.map((m) => (
-                <div key={m} className="relative text-right text-[10px] text-slate-400" style={{ height: 30 * PX }}>
+                <div key={m} className="relative text-right text-xs text-slate-500 dark:text-slate-400" style={{ height: 30 * PX }}>
                   <span className="absolute -top-1.5 right-1.5">{m % 60 === 0 ? `${String(Math.floor(m / 60)).padStart(2, "0")}:00` : ""}</span>
                 </div>
               ))}
@@ -176,21 +210,26 @@ export default function Agenda() {
                       const s = isoDay(new Date(b.start_at)) < c.day ? openMin : minutesOfDay(b.start_at);
                       const e = isoDay(new Date(b.end_at)) > c.day ? closeMin : minutesOfDay(b.end_at);
                       return (
-                        <div key={b.id} className="pointer-events-none absolute left-0 right-0 flex items-start gap-1 bg-[repeating-linear-gradient(45deg,#e2e8f0_0,#e2e8f0_6px,transparent_6px,transparent_12px)] p-1 text-[10px] text-slate-500 dark:bg-[repeating-linear-gradient(45deg,#1e293b_0,#1e293b_6px,transparent_6px,transparent_12px)]"
+                        <div key={b.id} className="pointer-events-none absolute left-0 right-0 flex items-start gap-1 bg-[repeating-linear-gradient(45deg,#e2e8f0_0,#e2e8f0_6px,transparent_6px,transparent_12px)] p-1 text-xs text-slate-600 dark:text-slate-300 dark:bg-[repeating-linear-gradient(45deg,#1e293b_0,#1e293b_6px,transparent_6px,transparent_12px)]"
                           style={{ top: (s - Math.floor(openMin / 30) * 30) * PX, height: Math.max(12, (e - s) * PX) }}>
                           <Ban className="h-3 w-3" /> {b.reason || "Bloqueado"}
                         </div>
                       );
                     })}
+                    {c.day === today && nowMin >= Math.floor(openMin / 30) * 30 && nowMin < closeMin && (
+                      <div className="pointer-events-none absolute left-0 right-0 z-[5] h-0.5 bg-rose-600" style={{ top: (nowMin - Math.floor(openMin / 30) * 30) * PX }} aria-hidden>
+                        <span className="absolute -left-1 -top-[3px] h-2 w-2 rounded-full bg-rose-600" />
+                      </div>
+                    )}
                     {placed.map(({ it: a, lane }) => {
                       const s = minutesOfDay(a.start_at);
                       const top = (s - Math.floor(openMin / 30) * 30) * PX;
                       return (
                         <button key={a.id} onClick={() => setSelected(a.id)}
-                          className={clsx("absolute overflow-hidden rounded-lg border-l-4 px-1.5 py-1 text-left text-[11px] leading-tight shadow-sm transition hover:z-10 hover:shadow-md", STATUS_STYLE[a.status])}
+                          className={clsx("absolute overflow-hidden rounded-lg border-l-4 px-1.5 py-1 text-left text-xs leading-tight shadow-sm transition hover:z-10 hover:shadow-md", STATUS_STYLE[a.status])}
                           style={{ top: top + 1, height: Math.max(22, a.duration_minutes * PX - 2), left: `calc(${(lane / count) * 100}% + 2px)`, width: `calc(${100 / count}% - 4px)`,
                             borderLeftColor: view === "semana" ? a.professional_color : undefined }}>
-                          <p className="truncate font-semibold">{time(a.start_at)} {a.customer_name}</p>
+                          <p className="truncate font-semibold"><StatusIcon status={a.status} /> {time(a.start_at)} {a.customer_name}</p>
                           <p className="truncate opacity-80">{a.service_name}{view === "semana" ? ` · ${a.professional_name.split(" ")[0]}` : a.room_name ? ` · ${a.room_name}` : ""}</p>
                         </button>
                       );
@@ -207,6 +246,34 @@ export default function Agenda() {
       {selected && <AppointmentDrawer id={selected} onClose={() => { setSelected(null); if (params.get("agendamento")) { params.delete("agendamento"); setParams(params, { replace: true }); } }} />}
       {blocking && <BlockForm day={day} onClose={() => setBlocking(false)} />}
     </div>
+  );
+}
+
+function DayList({ appts, onOpen, onNew }: { appts: any[]; onOpen: (id: string) => void; onNew?: () => void }) {
+  const sorted = [...appts].sort((a, b) => a.start_at.localeCompare(b.start_at));
+  if (!sorted.length)
+    return (
+      <div className="card">
+        <Empty title="Nenhum agendamento neste dia" action={onNew && <Button size="sm" icon={<CalendarPlus className="h-4 w-4" />} onClick={onNew}>Novo agendamento</Button>} />
+      </div>
+    );
+  return (
+    <ul className="space-y-2">
+      {sorted.map((a) => (
+        <li key={a.id}>
+          <button onClick={() => onOpen(a.id)}
+            className={clsx("card flex w-full items-center gap-3 !border-l-4 p-3 text-left transition hover:shadow-md", a.status === "cancelado" && "opacity-60")}
+            style={{ borderLeftColor: a.professional_color || undefined }}>
+            <span className="w-12 shrink-0 text-sm font-semibold tabular-nums">{time(a.start_at)}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{a.customer_name}</span>
+              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{a.service_name} · {a.professional_name}{a.room_name ? ` · ${a.room_name}` : ""}</span>
+            </span>
+            <StatusBadge status={a.status} />
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -229,9 +296,9 @@ function MonthGrid({ day, appts, onPickDay }: { day: string; appts: any[]; onPic
               <span className={clsx("inline-flex h-6 w-6 items-center justify-center rounded-full text-xs", d === today && "bg-brand-600 font-semibold text-white")}>{Number(d.slice(8))}</span>
               <div className="mt-1 space-y-0.5">
                 {list.slice(0, 3).map((a) => (
-                  <p key={a.id} className={clsx("truncate rounded border-l-2 px-1 text-[10px]", STATUS_STYLE[a.status])}>{time(a.start_at)} {a.customer_name}</p>
+                  <p key={a.id} className={clsx("truncate rounded border-l-2 px-1 text-xs", STATUS_STYLE[a.status])}>{time(a.start_at)} {a.customer_name}</p>
                 ))}
-                {list.length > 3 && <p className="text-[10px] text-slate-500">+{list.length - 3} atendimento(s)</p>}
+                {list.length > 3 && <p className="text-xs text-slate-500 dark:text-slate-400">+{list.length - 3} atendimento(s)</p>}
               </div>
             </button>
           );
@@ -259,7 +326,7 @@ function AppointmentForm({ initial, editing, onClose }: { initial?: { day: strin
   const [busy, setBusy] = useState(false);
   const service = services.find((s) => s.id === f.service_id);
   const allowedProfs = service?.professional_ids?.length ? professionals.filter((p) => service.professional_ids.includes(p.id)) : professionals;
-  const pkgs = useGet<any[]>(["packages", "customer"], customer && !editing ? "/packages" : null, { customer_id: customer?.id, status: "ativo" });
+  const pkgs = useGet<any[]>(["packages", "customer", customer?.id], customer && !editing ? "/packages" : null, { customer_id: customer?.id, status: "ativo" });
   const customerPkgs = (pkgs.data || []).filter((p) => p.service_id === f.service_id && p.sessions_remaining - p.reserved > 0);
   const set = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
 

@@ -46,3 +46,6 @@ build-installer/
 installer/Output/
 .claude/
 frontend/.vite/
+
+# página do portfólio (publicada à parte em /opt/sites/portfolio na VPS)
+portfolio/

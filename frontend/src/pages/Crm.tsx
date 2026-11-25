@@ -60,7 +60,7 @@ function Funnel() {
                     className="card cursor-grab p-3 text-sm active:cursor-grabbing">
                     <p className="font-medium">{l.name}</p>
                     <p className="text-xs text-slate-500">{phone(l.phone)} {l.source ? `· ${l.source}` : ""}</p>
-                    <p className="mt-1 text-[11px] text-slate-400">no estágio desde {date(l.stage_changed_at)}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">no estágio desde {date(l.stage_changed_at)}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {l.customer_id ? <Button size="sm" variant="ghost" onClick={() => navigate(`/clientes/${l.customer_id}`)}>Perfil</Button>
                         : can("customers.write") && <Button size="sm" variant="ghost" onClick={() => convert.mutate(l.id)}>Cadastrar cliente</Button>}
@@ -74,7 +74,7 @@ function Funnel() {
                     </div>
                   </div>
                 ))}
-                {items.length === 0 && <p className="px-1 py-4 text-center text-xs text-slate-400">Arraste cartões para cá</p>}
+                {items.length === 0 && <p className="px-1 py-4 text-center text-xs text-slate-500 dark:text-slate-400">Arraste cartões para cá</p>}
               </div>
             </div>
           );
@@ -131,7 +131,7 @@ function Alerts() {
             <ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">{a.returns[String(d)].map(row)}</ul>}
         </Card>
       ))}
-      <Card title="Aniversariantes (próximos 7 dias)" actions={<Cake className="h-4 w-4 text-rose-500" />}>
+      <Card title="Aniversariantes (próximos 7 dias)" actions={<Cake className="h-4 w-4 text-blossom-500" aria-hidden />}>
         {a.birthdays.length === 0 ? <p className="text-sm text-slate-500">Nenhum aniversário próximo.</p> : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {a.birthdays.map((b: any) => (

@@ -28,7 +28,7 @@ export function Readiness({ compact = false }: { compact?: boolean }) {
         {q.data.checks.map((c: any) => (
           <li key={c.key} className="flex items-start gap-2">
             {c.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> : <Circle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />}
-            <span className={c.ok ? "" : "text-slate-600 dark:text-slate-300"}>{c.message}{c.required_for === "producao" && <span className="text-xs text-slate-400"> (produção)</span>}</span>
+            <span className={c.ok ? "" : "text-slate-600 dark:text-slate-300"}>{c.message}{c.required_for === "producao" && <span className="text-xs text-slate-500 dark:text-slate-400"> (produção)</span>}</span>
           </li>
         ))}
       </ul>
@@ -222,7 +222,7 @@ export function InvoicesPage() {
         <PeriodPicker start={f.start} end={f.end} onChange={(s, e) => setF({ ...f, start: s, end: e })} />
       </>} title="Notas">
         <DataTable rows={list.data?.items || []} onRowClick={(r) => navigate(`/fiscal/notas/${r.id}`)} empty={<Empty title="Nenhuma nota" />} columns={[
-          { key: "nfse_number", label: "Número", render: (r) => r.nfse_number || <span className="text-slate-400">DPS {r.dps_number || "—"}</span> },
+          { key: "nfse_number", label: "Número", render: (r) => r.nfse_number || <span className="text-slate-500 dark:text-slate-400">DPS {r.dps_number || "—"}</span> },
           { key: "competence_date", label: "Competência", render: (r) => date(r.competence_date) },
           { key: "taker_name", label: "Tomador", render: (r) => <span>{r.taker_name || "Não identificado"} <span className="text-xs text-slate-500">{r.taker_document ? doc(r.taker_document) : ""}</span></span> },
           { key: "gross_amount", label: "Valor", render: (r) => money(r.gross_amount) },

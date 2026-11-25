@@ -14,7 +14,7 @@ VERSION = "1.0.0"
 
 EXCLUDE_DIRS = {
     ".git", ".claude", ".venv", "node_modules", "dist", "data", "__pycache__", ".pytest_cache",
-    "certbot", "entrega", ".vite", "build-installer", "implantacao-privada",
+    "certbot", "entrega", "portfolio", ".vite", "build-installer", "implantacao-privada",
 }
 EXCLUDE_FILES = [
     ".env", "*.pyc", "*.dump", "*.dump.enc", "*.pfx", "*.p12", "*.log", ".coverage", "Thumbs.db", ".DS_Store",

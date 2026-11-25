@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import has_perm
 from app.core.errors import AppError, Forbidden, NotFound
 from app.core.settings_store import get_setting
-from app.core.utils import local_today, normalize_text, only_digits, phone_variants, utcnow
+from app.core.utils import LIKE_ESCAPE, like_contains, local_today, normalize_text, only_digits, phone_variants, utcnow
 from app.models.auth import User
 from app.models.customer import Customer, CustomerConsent
 from app.models.schedule import Appointment
@@ -79,7 +79,7 @@ def next_appointment_subq():
 def search_condition(q: str):
     q = q.strip()
     digits = only_digits(q)
-    conds = [Customer.name_search.like(f"%{normalize_text(q)}%")]
+    conds = [Customer.name_search.like(like_contains(normalize_text(q)), escape=LIKE_ESCAPE)]
     if len(digits) >= 3:
         conds += [Customer.cpf.like(f"{digits}%"), Customer.phone.like(f"%{digits}%"), Customer.whatsapp.like(f"%{digits}%")]
     return or_(*conds)

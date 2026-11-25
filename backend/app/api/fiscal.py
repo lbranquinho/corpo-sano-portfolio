@@ -18,7 +18,7 @@ from app.core.database import get_db
 from app.core.deps import has_perm, require, require_any
 from app.core.errors import AppError, NotFound
 from app.core.storage import read_file, save_file
-from app.core.utils import local_today, money, only_digits, utcnow
+from app.core.utils import LIKE_ESCAPE, like_contains, local_today, money, only_digits, utcnow
 from app.integrations.nfse.certificate import CertificateError, inspect_pfx
 from app.models.auth import User
 from app.models.catalog import Service, TaxServiceCode
@@ -380,7 +380,7 @@ def list_invoices(status: str | None = None, environment: str | None = None, sta
     if customer_id:
         stmt = stmt.where(FiscalInvoice.customer_id == customer_id)
     if q:
-        stmt = stmt.where(or_(FiscalInvoice.taker_name.ilike(f"%{q}%"), FiscalInvoice.nfse_number == q,
+        stmt = stmt.where(or_(FiscalInvoice.taker_name.ilike(like_contains(q), escape=LIKE_ESCAPE), FiscalInvoice.nfse_number == q,
                               FiscalInvoice.taker_document == only_digits(q), FiscalInvoice.access_key == q))
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = db.scalars(stmt.order_by(FiscalInvoice.created_at.desc()).offset((page - 1) * page_size).limit(page_size)).all()

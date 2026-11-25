@@ -285,7 +285,7 @@ function Transactions() {
         { key: "transaction_date", label: "Data", render: (r) => date(r.transaction_date) },
         { key: "description", label: "Descrição", render: (r) => <span>{r.description} {r.is_reversal && <Badge color="red">estorno</Badge>} {r.reversed && <Badge color="gray">estornado</Badge>}</span> },
         { key: "method", label: "Forma", render: (r) => methods.find((m) => m.id === r.payment_method_id)?.name || "—" },
-        { key: "amount", label: "Valor", render: (r) => <span className={r.kind === "entrada" ? "text-emerald-600" : "text-rose-600"}>{r.kind === "entrada" ? "+" : "−"} {money(r.amount)}</span> },
+        { key: "amount", label: "Valor", render: (r) => <span className={r.kind === "entrada" ? "text-emerald-700 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>{r.kind === "entrada" ? "+" : "−"} {money(r.amount)}</span> },
         { key: "reconciled", label: "Conciliação", render: (r) => r.reconciled ? <Badge color="green">{r.reconciliation_ref || "conciliada"}</Badge> : <Badge color="gray">pendente</Badge> },
         { key: "a", label: "", render: (r) => can("finance.reverse") && !r.is_reversal && !r.reversed && <Button size="sm" variant="ghost" onClick={() => setReversing(r)}>Estornar</Button> },
       ]} />
@@ -348,7 +348,7 @@ function Closing() {
             {preview.data && (
               <dl className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800/50">
                 <dt>Saldo inicial</dt><dd className="text-right">{money(preview.data.opening_balance)}</dd>
-                <dt>Entradas</dt><dd className="text-right text-emerald-600">{money(preview.data.total_in)}</dd>
+                <dt>Entradas</dt><dd className="text-right text-emerald-700 dark:text-emerald-400">{money(preview.data.total_in)}</dd>
                 <dt>Saídas</dt><dd className="text-right text-rose-600">{money(preview.data.total_out)}</dd>
                 <dt className="font-semibold">Saldo esperado</dt><dd className="text-right font-semibold">{money(preview.data.expected_balance)}</dd>
               </dl>
