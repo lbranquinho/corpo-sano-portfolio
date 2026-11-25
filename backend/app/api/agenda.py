@@ -260,12 +260,13 @@ def change_status(appointment_id: uuid.UUID, data: StatusIn, db: Session = Depen
 
 @router.get("/availability")
 def availability(day: date, service_id: uuid.UUID, professional_id: uuid.UUID, room_id: uuid.UUID | None = None,
+                 duration_minutes: int | None = Query(default=None, ge=5, le=600),
                  db: Session = Depends(get_db), user: User = Depends(require("agenda.read"))):
     service = db.get(Service, service_id)
     if service is None:
         raise NotFound("Serviço")
     return {"day": day, "slots": svc.free_slots(db, day=day, service=service, professional_id=professional_id,
-                                                room_id=room_id)}
+                                                room_id=room_id, duration_minutes=duration_minutes)}
 
 
 @router.post("/check")

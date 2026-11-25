@@ -334,22 +334,43 @@ def change_status(db: Session, a: Appointment, action: str, *, user_id: uuid.UUI
 
 
 def free_slots(db: Session, *, day: date, service: Service, professional_id: uuid.UUID,
-               room_id: uuid.UUID | None) -> list[str]:
-    """Horários livres para agendamento rápido."""
+               room_id: uuid.UUID | None, duration_minutes: int | None = None) -> list[str]:
+    """Horários livres para agendamento rápido.
+
+    Usa a duração escolhida no agendamento (ou a do serviço) e, além da grade fixa (ex.: de 30 em 30 min),
+    oferece o horário exato em que termina cada atendimento/bloqueio do dia, para encaixar o próximo
+    logo em seguida (ex.: sessão de 50 min que acaba às 15h50 libera um início às 15h50).
+    """
+    duration = timedelta(minutes=duration_minutes or service.duration_minutes)
     step = int(get_setting(db, "agenda.slot_minutes") or 30)
     bh = db.scalar(select(BusinessHour).where(BusinessHour.weekday == day.weekday()))
     if bh is None or not bh.is_open or is_holiday(db, day):
         return []
     tz = clinic_tz()
-    cursor = datetime.combine(day, bh.open_time, tzinfo=tz)
+    open_at = datetime.combine(day, bh.open_time, tzinfo=tz)
     close = datetime.combine(day, bh.close_time, tzinfo=tz)
+    candidates: set[datetime] = set()
+    cursor = open_at
+    while cursor + duration <= close:
+        candidates.add(cursor)
+        cursor += timedelta(minutes=step)
+    buffer = buffer_for(db, service)
+    who = [Appointment.professional_id == professional_id]
+    if room_id:
+        who.append(Appointment.room_id == room_id)
+    ends = db.scalars(select(Appointment.end_at).where(
+        Appointment.status.in_(BLOCKING_STATUSES), Appointment.end_at > open_at, Appointment.end_at < close, or_(*who))).all()
+    ends += db.scalars(select(ScheduleBlock.end_at).where(ScheduleBlock.end_at > open_at, ScheduleBlock.end_at < close)).all()
+    for e in ends:
+        candidates.add(e.astimezone(tz) + timedelta(minutes=buffer))
     out = []
     now = utcnow()
-    while cursor + timedelta(minutes=service.duration_minutes) <= close:
-        end = cursor + timedelta(minutes=service.duration_minutes)
-        if cursor >= now and not hours_problems(db, professional_id, cursor, end) and not find_conflicts(
-            db, professional_id=professional_id, room_id=room_id, start=cursor, end=end, buffer=buffer_for(db, service)
+    for start in sorted(candidates):
+        end = start + duration
+        if end > close or start < now:
+            continue
+        if not hours_problems(db, professional_id, start, end) and not find_conflicts(
+            db, professional_id=professional_id, room_id=room_id, start=start, end=end, buffer=buffer
         ):
-            out.append(cursor.isoformat())
-        cursor += timedelta(minutes=step)
+            out.append(start.isoformat())
     return out

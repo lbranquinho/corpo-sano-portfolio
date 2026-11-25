@@ -80,6 +80,24 @@ def test_back_to_back_without_interval(client, setup_basics):
     assert r.status_code == 201, r.text
 
 
+def test_custom_duration_moves_next_start(client, setup_basics):
+    """Duração alterada no agendamento (60 → 50 min) define o término e libera o próximo início às 15h50."""
+    b = setup_basics
+    start = next_weekday_at(15)
+    r = book(client, b, start, duration_minutes=50)
+    assert r.status_code == 201, r.text
+    day = start.date().isoformat()
+    slots = client.get(f"/api/v1/agenda/availability?day={day}&service_id={b['service']['id']}"
+                       f"&professional_id={b['prof']['id']}&room_id={b['room']['id']}&duration_minutes=30", headers=b["h"]).json()["slots"]
+    hhmm = [s[11:16] for s in slots]
+    assert "15:50" in hhmm and "15:30" not in hhmm and "14:30" in hhmm  # 14h30 + 30 min termina às 15h
+    assert book(client, b, start + timedelta(minutes=45)).status_code == 409
+    assert book(client, b, start + timedelta(minutes=50)).status_code == 201
+    # para mais: 90 min a partir das 17h ocupa até 18h30
+    assert book(client, b, next_weekday_at(17), duration_minutes=90).status_code == 201
+    assert book(client, b, next_weekday_at(18)).status_code == 409
+
+
 def test_default_hours_6_to_22_every_day(client, setup_basics):
     b = setup_basics
     hours = client.get("/api/v1/settings/business-hours", headers=b["h"]).json()

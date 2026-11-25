@@ -333,11 +333,25 @@ function AppointmentForm({ initial, editing, onClose }: { initial?: { day: strin
   useEffect(() => {
     if (service && !editing) setF((x: any) => ({ ...x, duration_minutes: service.duration_minutes, price: service.price }));
   }, [service, editing]);
+  const durationNum = Number(f.duration_minutes) || 0;
+  const validDuration = durationNum >= 5 && durationNum <= 600 ? durationNum : undefined;
   useEffect(() => {
     if (!f.service_id || !f.professional_id || !f.day) return setSlots([]);
-    get("/agenda/availability", { day: f.day, service_id: f.service_id, professional_id: f.professional_id, room_id: f.room_id || undefined })
-      .then((r) => setSlots(r.slots)).catch(() => setSlots([]));
-  }, [f.service_id, f.professional_id, f.room_id, f.day]);
+    let alive = true;
+    // horários livres calculados com a duração escolhida (não só a padrão do serviço)
+    const t = setTimeout(() => get("/agenda/availability", {
+      day: f.day, service_id: f.service_id, professional_id: f.professional_id, room_id: f.room_id || undefined,
+      duration_minutes: validDuration,
+    }).then((r) => alive && setSlots(r.slots)).catch(() => alive && setSlots([])), 250);
+    return () => { alive = false; clearTimeout(t); };
+  }, [f.service_id, f.professional_id, f.room_id, f.day, validDuration]);
+  const endTime = (() => {
+    if (!f.time || !validDuration) return "";
+    const [h, m] = f.time.split(":").map(Number);
+    const total = h * 60 + m + validDuration;
+    return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  })();
+  const bump = (delta: number) => set("duration_minutes", Math.min(600, Math.max(5, (durationNum || service?.duration_minutes || 60) + delta)));
   useEffect(() => {
     if (!customer || !f.service_id || !f.professional_id || !f.day || !f.time) return setCheck(null);
     const t = setTimeout(() => {
@@ -399,7 +413,15 @@ function AppointmentForm({ initial, editing, onClose }: { initial?: { day: strin
         </Field>
         <Field label="Data" required className="sm:col-span-2"><Input type="date" value={f.day} onChange={(e) => set("day", e.target.value)} /></Field>
         <Field label="Horário" required className="sm:col-span-2"><Input type="time" step={300} value={f.time} onChange={(e) => set("time", e.target.value)} /></Field>
-        <Field label="Duração (min)" className="sm:col-span-2"><Input type="number" min={5} value={f.duration_minutes} onChange={(e) => set("duration_minutes", e.target.value)} /></Field>
+        <Field label="Duração (min)" className="sm:col-span-2"
+          hint={endTime ? `Termina às ${endTime}${service && validDuration && validDuration !== service.duration_minutes ? ` · padrão do serviço: ${service.duration_minutes} min` : ""}` : undefined}>
+          <div className="flex items-center gap-1">
+            <Button type="button" variant="secondary" className="h-11 w-11 shrink-0 !p-0" aria-label="Diminuir 5 minutos" onClick={() => bump(-5)}>−</Button>
+            <Input type="number" inputMode="numeric" min={5} max={600} step={5} className="text-center" value={f.duration_minutes}
+              onChange={(e) => set("duration_minutes", e.target.value)} />
+            <Button type="button" variant="secondary" className="h-11 w-11 shrink-0 !p-0" aria-label="Aumentar 5 minutos" onClick={() => bump(5)}>+</Button>
+          </div>
+        </Field>
         {slots.length > 0 && (
           <div className="sm:col-span-6">
             <p className="label">Horários livres neste dia</p>
